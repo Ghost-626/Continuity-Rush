@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Continuity Rush</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#0f172a',
+                            800: '#1e293b',
+                            700: '#334155'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #090d16, #1a233a);
+        }
+    </style>
+</head>
+<body class="bg-dark-900 text-slate-100 min-h-screen flex flex-col items-center justify-between p-4 selection:bg-amber-500 selection:text-black">
+
+    <!-- Header / Title -->
+    <header class="w-full max-w-4xl flex items-center justify-between py-4 px-6 bg-dark-800/80 backdrop-blur-md rounded-2xl border border-slate-700 shadow-xl mb-4">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-2xl shadow-inner">
+                🦫
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">Continuity Rush</h1>
+                <p class="text-xs text-slate-400">IT Infrastructure Survival Simulator</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div id="scoreDisplay" class="text-right">
+                <div class="text-xs text-slate-400 uppercase font-semibold">Счет</div>
+                <div id="currentScore" class="text-lg font-bold font-mono text-amber-400">0</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="w-full max-w-4xl relative flex-grow flex flex-col items-center justify-center">
+        
+        <!-- Game Canvas Wrapper -->
+        <div class="relative w-full aspect-[2/1] rounded-2xl overflow-hidden shadow-2xl border border-slate-700 bg-dark-800 flex items-center justify-center">
+            <canvas id="gameCanvas" class="w-full h-full cursor-pointer"></canvas>
+            
+            <!-- Start Screen Overlay -->
+            <div id="startScreen" class="absolute inset-0 bg-dark-900/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-20 transition-opacity duration-300">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-4xl shadow-lg mb-4 animate-bounce">
+                    🦫🎩
+                </div>
+                <h2 class="text-3xl font-extrabold mb-2 text-white">Continuity Rush</h2>
+                <p class="text-slate-300 max-w-md text-sm mb-6">
+                    Помогите капитану-капибаре удержать коэффициент доступности в пределах 99,80%, избегая нарушений непрерывности платежной деятельности!
+                </p>
+                <div class="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
+                    <button id="startBtn" class="w-full py-3 px-6 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-bold rounded-xl shadow-lg transition transform active:scale-95">
+                        Старт игры
+                    </button>
+                </div>
+                <div class="mt-4 text-xs text-slate-400">
+                    Управление: Нажмите <kbd class="px-2 py-1 bg-slate-800 border border-slate-600 rounded text-amber-400 font-mono">Пробел</kbd> или тапните по экрану для прыжка
+                </div>
+            </div>
+
+            <!-- Game Over Screen Overlay -->
+            <div id="gameOverScreen" class="absolute inset-0 bg-dark-900/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 hidden transition-opacity duration-300">
+                <div class="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/50 flex items-center justify-center text-3xl shadow-lg mb-3 text-red-500">
+                    ⚠️
+                </div>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-red-500 mb-1 tracking-wider">ДОСТУПНОСТЬ НАРУШЕНА</h2>
+                <p class="text-slate-400 text-xs sm:text-sm mb-4">Сгорел на работе</p>
+                
+                <div class="bg-dark-800 border border-slate-700 rounded-xl p-4 mb-6 w-48 shadow-inner">
+                    <div class="text-xs text-slate-400">Итоговый счет</div>
+                    <div id="finalScore" class="text-3xl font-black font-mono text-amber-400">0</div>
+                </div>
+
+                <div class="flex flex-row gap-3 w-full max-w-xs justify-center">
+                    <button id="restartBtn" class="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl shadow-lg transition transform active:scale-95 text-sm">
+                        Заново
+                    </button>
+                    <button id="exitBtn" class="flex-1 py-3 px-4 bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold rounded-xl shadow-lg transition transform active:scale-95 text-sm border border-slate-600">
+                        Выйти
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Message Box -->
+        <div id="messageModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-dark-800 border border-slate-700 rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl">
+                <div id="messageIcon" class="text-3xl mb-3">ℹ️</div>
+                <h4 id="messageTitle" class="text-lg font-bold text-white mb-2">Сообщение</h4>
+                <p id="messageText" class="text-slate-300 text-sm mb-6"></p>
+                <button id="messageOkBtn" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-xl transition">
+                    ОК
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-4xl text-center py-3 text-xs text-slate-500">
+        Continuity Rush &bull; Business Continuity & Disaster Recovery Runner
+    </footer>
+
+    <!-- Game Logic -->
+    <script>
+        // --- CUSTOMIZABLE OBSTACLE LIBRARY (Developer Config) ---
+        // Modifiable array of IT/software failure obstacles
+        const obstacleLibrary = [
+            { id: 'bug', name: 'Software Bug', icon: '🐛', color: '#ef4444' },
+            { id: 'fire', name: 'DC Fire', icon: '🔥', color: '#f97316' },
+            { id: 'hacker', name: 'Cyber Attack', icon: '💀', color: '#a855f7' },
+            { id: 'sanctions', name: 'Sanctions / Ban', icon: '⛔', color: '#eab308' },
+            { id: 'network', name: 'Network Outage', icon: '📡', color: '#3b82f6' },
+            { id: 'server_down', name: 'Server Crash', icon: '💥', color: '#ec4899' }
+        ];
+
+        // Custom Message Box function
+        function showMsg(title, text, icon = 'ℹ️') {
+            document.getElementById('messageTitle').innerText = title;
+            document.getElementById('messageText').innerText = text;
+            document.getElementById('messageIcon').innerText = icon;
+            document.getElementById('messageModal').classList.remove('hidden');
+        }
+        document.getElementById('messageOkBtn').addEventListener('click', () => {
+            document.getElementById('messageModal').classList.add('hidden');
+        });
+
+        // --- GAME ENGINE ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let gameState = 'START'; // START, RUNNING, GAMEOVER
+        let score = 0;
+        let gameSpeed = 5;
+        let gravity = 0.6;
+        let obstacles = [];
+        let frameCount = 0;
+        let nextObstacleGap = 0; // Distance needed before spawning next obstacle
+
+        // Player: Captain Capybara
+        let player = {
+            x: 80,
+            y: 0,
+            width: 56,
+            height: 64,
+            vy: 0,
+            jumpPower: -12,
+            isGrounded: false,
+            update() {
+                this.vy += gravity;
+                this.y += this.vy;
+
+                const groundLevel = canvas.height - 70;
+                if (this.y + this.height >= groundLevel) {
+                    this.y = groundLevel - this.height;
+                    this.vy = 0;
+                    this.isGrounded = true;
+                }
+            },
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Capybara Body
+                ctx.fillStyle = '#a0522d';
+                ctx.beginPath();
+                ctx.roundRect(8, 20, 42, 38, [16, 16, 12, 12]);
+                ctx.fill();
+
+                // Snout / Head
+                ctx.beginPath();
+                ctx.roundRect(32, 22, 22, 28, [12, 14, 12, 12]);
+                ctx.fill();
+
+                // Nose
+                ctx.fillStyle = '#65351a';
+                ctx.beginPath();
+                ctx.arc(50, 32, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eye
+                ctx.fillStyle = '#111827';
+                ctx.beginPath();
+                ctx.arc(42, 26, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Ear
+                ctx.fillStyle = '#8b4513';
+                ctx.beginPath();
+                ctx.arc(16, 18, 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Business Suit: Dark Jacket
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.roundRect(6, 36, 46, 26, [4, 4, 10, 10]);
+                ctx.fill();
+
+                // White Collar & Tie
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.moveTo(26, 36);
+                ctx.lineTo(34, 36);
+                ctx.lineTo(30, 48);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#ef4444'; // Red tie
+                ctx.beginPath();
+                ctx.moveTo(28, 40);
+                ctx.lineTo(32, 40);
+                ctx.lineTo(31, 52);
+                ctx.lineTo(29, 52);
+                ctx.closePath();
+                ctx.fill();
+
+                // Yellow Construction Hard Hat
+                ctx.fillStyle = '#eab308';
+                ctx.beginPath();
+                ctx.arc(30, 14, 18, Math.PI, 0, false);
+                ctx.fill();
+
+                // Hard hat brim
+                ctx.fillStyle = '#ca8a04';
+                ctx.beginPath();
+                ctx.roundRect(8, 12, 44, 4, 2);
+                ctx.fill();
+
+                // Hard hat reflex highlight
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.roundRect(22, 4, 12, 3, 1.5);
+                ctx.fill();
+
+                ctx.restore();
+            },
+            jump() {
+                if (this.isGrounded) {
+                    this.vy = this.jumpPower;
+                    this.isGrounded = false;
+                    playSound('jump');
+                }
+            }
+        };
+
+        // Obstacle Class
+        class Obstacle {
+            constructor() {
+                const template = obstacleLibrary[Math.floor(Math.random() * obstacleLibrary.length)];
+                this.id = template.id;
+                this.name = template.name;
+                this.icon = template.icon;
+                this.color = template.color;
+                
+                this.x = canvas.width + 50;
+                this.width = 50;
+                this.height = 50;
+                this.y = canvas.height - 70 - this.height;
+            }
+            update() {
+                this.x -= gameSpeed;
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Background container
+                ctx.fillStyle = this.color + '22';
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(0, 0, this.width, this.height, 12);
+                ctx.fill();
+                ctx.stroke();
+
+                // Icon
+                ctx.font = '26px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.icon, this.width / 2, this.height / 2);
+
+                ctx.restore();
+            }
+        }
+
+        // Web Audio API Sound Effects
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            try {
+                initAudio();
+                if (!audioCtx) return;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+                if (type === 'jump') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'crash') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.linearRampToValueAtTime(40, now + 0.3);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                }
+            } catch (e) {
+                console.log('Audio error', e);
+            }
+        }
+
+        function getNewRandomGap() {
+            // Guaranteed minimum distance (260px) + random shift (0 to 180px)
+            const minGap = 260;
+            const randomShift = Math.random() * 180;
+            return minGap + randomShift;
+        }
+
+        function startGame() {
+            score = 0;
+            gameSpeed = 5;
+            obstacles = [];
+            frameCount = 0;
+            nextObstacleGap = getNewRandomGap();
+            player.y = canvas.height - 70 - player.height;
+            player.vy = 0;
+            
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            gameState = 'RUNNING';
+        }
+
+        function gameOver() {
+            gameState = 'GAMEOVER';
+            playSound('crash');
+            document.getElementById('finalScore').innerText = Math.floor(score);
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        function update() {
+            if (gameState !== 'RUNNING') return;
+
+            frameCount++;
+            score += 0.1;
+            document.getElementById('currentScore').innerText = Math.floor(score);
+
+            if (frameCount % 500 === 0) {
+                gameSpeed += 0.5;
+            }
+
+            player.update();
+
+            // Spawn obstacles with safe random distances
+            if (obstacles.length === 0) {
+                obstacles.push(new Obstacle());
+                nextObstacleGap = getNewRandomGap();
+            } else {
+                const lastObstacle = obstacles[obstacles.length - 1];
+                if (canvas.width + 50 - lastObstacle.x >= nextObstacleGap) {
+                    obstacles.push(new Obstacle());
+                    nextObstacleGap = getNewRandomGap();
+                }
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                obstacles[i].update();
+
+                // AABB Collision Detection
+                if (
+                    player.x + 8 < obstacles[i].x + obstacles[i].width - 8 &&
+                    player.x + player.width - 8 > obstacles[i].x + 8 &&
+                    player.y + 8 < obstacles[i].y + obstacles[i].height - 8 &&
+                    player.y + player.height - 8 > obstacles[i].y + 8
+                ) {
+                    gameOver();
+                }
+
+                if (obstacles[i].x + obstacles[i].width < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background tech grid
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            const offset = (frameCount * gameSpeed * 0.5) % gridSize;
+
+            ctx.beginPath();
+            for (let x = -offset; x < canvas.width; x += gridSize) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height - 70);
+            }
+            ctx.stroke();
+
+            // Ground Floor
+            const groundY = canvas.height - 70;
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, groundY, canvas.width, 70);
+
+            // Glowing line
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(0, groundY, canvas.width, 3);
+
+            obstacles.forEach(obs => obs.draw());
+            player.draw();
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                if (gameState === 'RUNNING') {
+                    player.jump();
+                } else if (gameState === 'START' || gameState === 'GAMEOVER') {
+                    startGame();
+                }
+            }
+        });
+
+        canvas.addEventListener('click', () => {
+            if (gameState === 'RUNNING') {
+                player.jump();
+            } else if (gameState === 'START') {
+                startGame();
+            }
+        });
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', startGame);
+        document.getElementById('exitBtn').addEventListener('click', () => {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
+                window.Telegram.WebApp.close();
+            } else {
+                window.close();
+                showMsg('Выход', 'Вы можете закрыть вкладку браузера.');
+            }
+        });
+
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
